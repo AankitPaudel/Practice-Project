@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Simple WebSocket Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        #log {
+            border: 1px solid #ccc;
+            padding: 10px;
+            height: 200px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+            background-color: #f9f9f9;
+        }
+        button {
+            padding: 10px 15px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        input {
+            padding: 10px;
+            width: 300px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Simple WebSocket Test</h1>
+    <div>
+        <p>Status: <span id="status">Disconnected</span></p>
+        <button id="connect">Connect</button>
+        <button id="disconnect">Disconnect</button>
+    </div>
+    <div style="margin-top: 20px;">
+        <input type="text" id="message" value="Hello, WebSocket!" />
+        <button id="send">Send Message</button>
+    </div>
+    <div style="margin-top: 20px;">
+        <h3>Log:</h3>
+        <div id="log"></div>
+    </div>
+
+    <script>
+        let socket;
+        const statusElement = document.getElementById('status');
+        const logElement = document.getElementById('log');
+        const messageInput = document.getElementById('message');
+
+        function log(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            logElement.innerHTML += `<div>[${timestamp}] ${message}</div>`;
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        document.getElementById('connect').addEventListener('click', () => {
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                log('Already connected');
+                return;
+            }
+
+            log('Connecting to WebSocket server...');
+            socket = new WebSocket('ws://localhost:8080');
+
+            socket.onopen = () => {
+                statusElement.textContent = 'Connected';
+                statusElement.style.color = 'green';
+                log('Connected to WebSocket server');
+            };
+
+            socket.onmessage = (event) => {
+                log(`Received message: ${event.data}`);
+            };
+
+            socket.onclose = () => {
+                statusElement.textContent = 'Disconnected';
+                statusElement.style.color = 'red';
+                log('Disconnected from WebSocket server');
+            };
+
+            socket.onerror = (error) => {
+                log(`WebSocket error: ${error}`);
+                statusElement.textContent = 'Error';
+                statusElement.style.color = 'red';
+            };
+        });
+
+        document.getElementById('disconnect').addEventListener('click', () => {
+            if (!socket || socket.readyState !== WebSocket.OPEN) {
+                log('Not connected');
+                return;
+            }
+
+            log('Disconnecting from WebSocket server...');
+            socket.close();
+        });
+
+        document.getElementById('send').addEventListener('click', () => {
+            if (!socket || socket.readyState !== WebSocket.OPEN) {
+                log('Not connected. Please connect first.');
+                return;
+            }
+
+            const message = messageInput.value.trim();
+            if (!message) {
+                log('Please enter a message');
+                return;
+            }
+
+            log(`Sending message: ${message}`);
+            socket.send(message);
+        });
+    </script>
+</body>
+</html> 

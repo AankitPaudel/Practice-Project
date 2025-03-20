@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebSocket Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        #log {
+            border: 1px solid #ccc;
+            padding: 10px;
+            height: 300px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+            background-color: #f9f9f9;
+        }
+        button {
+            padding: 10px 15px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        input {
+            padding: 10px;
+            width: 300px;
+        }
+    </style>
+</head>
+<body>
+    <h1>WebSocket Test for Virtual Teacher</h1>
+    <div>
+        <p>Status: <span id="status">Disconnected</span></p>
+        <button id="connect">Connect</button>
+        <button id="disconnect">Disconnect</button>
+    </div>
+    <div style="margin-top: 20px;">
+        <p>Audio File Path:</p>
+        <input type="text" id="audioPath" value="C:/UnrealAudio/input.wav" />
+        <button id="send">Send Audio Path</button>
+    </div>
+    <div style="margin-top: 20px;">
+        <h3>Log:</h3>
+        <div id="log"></div>
+    </div>
+
+    <script>
+        let socket;
+        const statusElement = document.getElementById('status');
+        const logElement = document.getElementById('log');
+        const audioPathInput = document.getElementById('audioPath');
+
+        function log(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            logElement.innerHTML += `<div>[${timestamp}] ${message}</div>`;
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        document.getElementById('connect').addEventListener('click', () => {
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                log('Already connected');
+                return;
+            }
+
+            log('Connecting to WebSocket server...');
+            socket = new WebSocket('ws://localhost:8000/ws');
+
+            socket.onopen = () => {
+                statusElement.textContent = 'Connected';
+                statusElement.style.color = 'green';
+                log('Connected to WebSocket server');
+            };
+
+            socket.onmessage = (event) => {
+                log('Received message from server:');
+                try {
+                    const data = JSON.parse(event.data);
+                    log(`Question: ${data.question}`);
+                    log(`Answer: ${data.answer}`);
+                    log(`Audio URL: ${data.audio_url}`);
+                    
+                    // Create audio player if audio URL is available
+                    if (data.audio_url) {
+                        const audioUrl = `http://localhost:8000${data.audio_url}`;
+                        log(`Playing audio from: ${audioUrl}`);
+                        const audio = new Audio(audioUrl);
+                        audio.play();
+                    }
+                } catch (e) {
+                    log(`Error parsing message: ${e.message}`);
+                    log(`Raw message: ${event.data}`);
+                }
+            };
+
+            socket.onclose = () => {
+                statusElement.textContent = 'Disconnected';
+                statusElement.style.color = 'red';
+                log('Disconnected from WebSocket server');
+            };
+
+            socket.onerror = (error) => {
+                log(`WebSocket error: ${error}`);
+                statusElement.textContent = 'Error';
+                statusElement.style.color = 'red';
+            };
+        });
+
+        document.getElementById('disconnect').addEventListener('click', () => {
+            if (!socket || socket.readyState !== WebSocket.OPEN) {
+                log('Not connected');
+                return;
+            }
+
+            log('Disconnecting from WebSocket server...');
+            socket.close();
+        });
+
+        document.getElementById('send').addEventListener('click', () => {
+            if (!socket || socket.readyState !== WebSocket.OPEN) {
+                log('Not connected. Please connect first.');
+                return;
+            }
+
+            const audioPath = audioPathInput.value.trim();
+            if (!audioPath) {
+                log('Please enter an audio file path');
+                return;
+            }
+
+            const message = {
+                audio_path: audioPath
+            };
+
+            log(`Sending audio path: ${audioPath}`);
+            socket.send(JSON.stringify(message));
+        });
+    </script>
+</body>
+</html> 
